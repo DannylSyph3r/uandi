@@ -5,15 +5,17 @@ import { FractalGlassBackground } from "@/components/FractalGlassBackground";
 import { SettingsPanel, GlassSettings } from "@/components/SettingsPanel";
 
 const defaultSettings: GlassSettings = {
-  numStripes: 50,
-  strength: 1.5,
-  shadowIntensity: 0.6,
+  noiseScale: 1.0,
+  displacementStrength: 0.15,
+  lineFrequency: 120,
+  lineSharpness: 0.5,
+  animationSpeed: 0.1,
   grainIntensity: 0.04,
-  animationDuration: 12,
-  gradientStart: "#ec4899",
-  gradientMiddle: "#8b5cf6",
-  gradientEnd: "#3b82f6",
-  gradientAccent: "#06b6d4",
+  contrastBoost: 1.3,
+  colorDark: "#0a0515",
+  colorMid: "#581c87",
+  colorBright: "#ec4899",
+  colorAccent: "#06b6d4",
 };
 
 export default function FractalGlassPage() {
@@ -25,22 +27,21 @@ export default function FractalGlassPage() {
 
   return (
     <main className="relative min-h-screen bg-black">
-      {/* Full-screen fractal glass effect */}
       <FractalGlassBackground
-        numStripes={settings.numStripes}
-        strength={settings.strength}
-        shadowIntensity={settings.shadowIntensity}
+        noiseScale={settings.noiseScale}
+        displacementStrength={settings.displacementStrength}
+        lineFrequency={settings.lineFrequency}
+        lineSharpness={settings.lineSharpness}
+        animationSpeed={settings.animationSpeed}
         grainIntensity={settings.grainIntensity}
-        animationDuration={settings.animationDuration}
+        contrastBoost={settings.contrastBoost}
         gradientColors={[
-          settings.gradientStart,
-          settings.gradientMiddle,
-          settings.gradientEnd,
-          settings.gradientAccent,
+          settings.colorDark,
+          settings.colorMid,
+          settings.colorBright,
+          settings.colorAccent,
         ]}
       />
-
-      {/* Settings panel overlay */}
       <SettingsPanel settings={settings} onSettingsChange={handleSettingsChange} />
     </main>
   );

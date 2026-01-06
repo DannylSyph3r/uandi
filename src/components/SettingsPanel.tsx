@@ -8,67 +8,69 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 
 export interface GlassSettings {
-  numStripes: number;
-  strength: number;
-  shadowIntensity: number;
+  noiseScale: number;
+  displacementStrength: number;
+  lineFrequency: number;
+  lineSharpness: number;
+  animationSpeed: number;
   grainIntensity: number;
-  animationDuration: number;
-  gradientStart: string;
-  gradientMiddle: string;
-  gradientEnd: string;
-  gradientAccent: string;
+  contrastBoost: number;
+  colorDark: string;
+  colorMid: string;
+  colorBright: string;
+  colorAccent: string;
 }
 
 interface ColorPreset {
   name: string;
-  gradientStart: string;
-  gradientMiddle: string;
-  gradientEnd: string;
-  gradientAccent: string;
+  colorDark: string;
+  colorMid: string;
+  colorBright: string;
+  colorAccent: string;
 }
 
 const colorPresets: ColorPreset[] = [
   {
-    name: "Pink Blue",
-    gradientStart: "#ec4899",
-    gradientMiddle: "#8b5cf6",
-    gradientEnd: "#3b82f6",
-    gradientAccent: "#06b6d4",
+    name: "Pink Neon",
+    colorDark: "#0a0515",
+    colorMid: "#581c87",
+    colorBright: "#ec4899",
+    colorAccent: "#06b6d4",
   },
   {
-    name: "Orange Dark",
-    gradientStart: "#f97316",
-    gradientMiddle: "#ea580c",
-    gradientEnd: "#14b8a6",
-    gradientAccent: "#fbbf24",
+    name: "Orange Flame",
+    colorDark: "#0c0a09",
+    colorMid: "#7c2d12",
+    colorBright: "#f97316",
+    colorAccent: "#fbbf24",
   },
   {
-    name: "Gold Black",
-    gradientStart: "#fbbf24",
-    gradientMiddle: "#f59e0b",
-    gradientEnd: "#78350f",
-    gradientAccent: "#fef3c7",
+    name: "Blue Ocean",
+    colorDark: "#020617",
+    colorMid: "#1e3a8a",
+    colorBright: "#3b82f6",
+    colorAccent: "#67e8f9",
   },
   {
-    name: "Blue Orange",
-    gradientStart: "#3b82f6",
-    gradientMiddle: "#1d4ed8",
-    gradientEnd: "#ea580c",
-    gradientAccent: "#93c5fd",
-  },
-  {
-    name: "Deep Neon",
-    gradientStart: "#f43f5e",
-    gradientMiddle: "#a855f7",
-    gradientEnd: "#1e3a8a",
-    gradientAccent: "#7c3aed",
+    name: "Gold Lux",
+    colorDark: "#0f0c06",
+    colorMid: "#78350f",
+    colorBright: "#f59e0b",
+    colorAccent: "#fef3c7",
   },
   {
     name: "Aurora",
-    gradientStart: "#22c55e",
-    gradientMiddle: "#06b6d4",
-    gradientEnd: "#8b5cf6",
-    gradientAccent: "#14b8a6",
+    colorDark: "#022c22",
+    colorMid: "#065f46",
+    colorBright: "#10b981",
+    colorAccent: "#a78bfa",
+  },
+  {
+    name: "Magenta",
+    colorDark: "#1a0a1a",
+    colorMid: "#86198f",
+    colorBright: "#d946ef",
+    colorAccent: "#f0abfc",
   },
 ];
 
@@ -83,16 +85,15 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
 
   const handlePresetClick = (preset: ColorPreset) => {
     onSettingsChange({
-      gradientStart: preset.gradientStart,
-      gradientMiddle: preset.gradientMiddle,
-      gradientEnd: preset.gradientEnd,
-      gradientAccent: preset.gradientAccent,
+      colorDark: preset.colorDark,
+      colorMid: preset.colorMid,
+      colorBright: preset.colorBright,
+      colorAccent: preset.colorAccent,
     });
   };
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
-      {/* Toggle Button */}
       {!isOpen && (
         <Button
           onClick={() => setIsOpen(true)}
@@ -103,7 +104,6 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
         </Button>
       )}
 
-      {/* Settings Panel */}
       {isOpen && (
         <Card className="w-80 bg-black/80 backdrop-blur-xl border-white/10 text-white shadow-2xl max-h-[85vh] overflow-y-auto">
           <CardHeader className="pb-2 flex flex-row items-center justify-between sticky top-0 bg-black/80 backdrop-blur-xl z-10">
@@ -115,11 +115,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                 className="h-6 w-6 hover:bg-white/10"
                 onClick={() => setIsCollapsed(!isCollapsed)}
               >
-                {isCollapsed ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
+                {isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </Button>
               <Button
                 variant="ghost"
@@ -140,56 +136,98 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                   Glass Effect
                 </h4>
 
-                {/* Number of Stripes */}
+                {/* Noise Scale */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Ridges</Label>
-                    <span className="text-white/50 font-mono">
-                      {settings.numStripes.toFixed(0)}
-                    </span>
+                    <Label className="text-white/80">Blob Size</Label>
+                    <span className="text-white/50 font-mono">{settings.noiseScale.toFixed(2)}</span>
                   </div>
                   <Slider
-                    value={[settings.numStripes]}
-                    min={10}
-                    max={120}
-                    step={1}
-                    onValueChange={([v]) => onSettingsChange({ numStripes: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
-
-                {/* Strength */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Displacement</Label>
-                    <span className="text-white/50 font-mono">
-                      {settings.strength.toFixed(2)}
-                    </span>
-                  </div>
-                  <Slider
-                    value={[settings.strength]}
+                    value={[settings.noiseScale]}
                     min={0.3}
-                    max={4.0}
+                    max={3.0}
                     step={0.1}
-                    onValueChange={([v]) => onSettingsChange({ strength: v })}
+                    onValueChange={([v]) => onSettingsChange({ noiseScale: v })}
                     className="[&_[role=slider]]:bg-white"
                   />
                 </div>
 
-                {/* Shadow Intensity */}
+                {/* Displacement Strength */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Edge Shadow</Label>
-                    <span className="text-white/50 font-mono">
-                      {settings.shadowIntensity.toFixed(2)}
-                    </span>
+                    <Label className="text-white/80">Line Bend</Label>
+                    <span className="text-white/50 font-mono">{settings.displacementStrength.toFixed(2)}</span>
                   </div>
                   <Slider
-                    value={[settings.shadowIntensity]}
-                    min={0}
-                    max={1.0}
+                    value={[settings.displacementStrength]}
+                    min={0.05}
+                    max={0.5}
+                    step={0.01}
+                    onValueChange={([v]) => onSettingsChange({ displacementStrength: v })}
+                    className="[&_[role=slider]]:bg-white"
+                  />
+                </div>
+
+                {/* Line Frequency */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <Label className="text-white/80">Line Density</Label>
+                    <span className="text-white/50 font-mono">{settings.lineFrequency.toFixed(0)}</span>
+                  </div>
+                  <Slider
+                    value={[settings.lineFrequency]}
+                    min={40}
+                    max={250}
+                    step={5}
+                    onValueChange={([v]) => onSettingsChange({ lineFrequency: v })}
+                    className="[&_[role=slider]]:bg-white"
+                  />
+                </div>
+
+                {/* Line Sharpness */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <Label className="text-white/80">Line Sharpness</Label>
+                    <span className="text-white/50 font-mono">{settings.lineSharpness.toFixed(2)}</span>
+                  </div>
+                  <Slider
+                    value={[settings.lineSharpness]}
+                    min={0.1}
+                    max={0.95}
                     step={0.05}
-                    onValueChange={([v]) => onSettingsChange({ shadowIntensity: v })}
+                    onValueChange={([v]) => onSettingsChange({ lineSharpness: v })}
+                    className="[&_[role=slider]]:bg-white"
+                  />
+                </div>
+
+                {/* Contrast Boost */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <Label className="text-white/80">Contrast</Label>
+                    <span className="text-white/50 font-mono">{settings.contrastBoost.toFixed(2)}</span>
+                  </div>
+                  <Slider
+                    value={[settings.contrastBoost]}
+                    min={0.8}
+                    max={2.5}
+                    step={0.1}
+                    onValueChange={([v]) => onSettingsChange({ contrastBoost: v })}
+                    className="[&_[role=slider]]:bg-white"
+                  />
+                </div>
+
+                {/* Animation Speed */}
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs">
+                    <Label className="text-white/80">Flow Speed</Label>
+                    <span className="text-white/50 font-mono">{settings.animationSpeed.toFixed(2)}</span>
+                  </div>
+                  <Slider
+                    value={[settings.animationSpeed]}
+                    min={0.02}
+                    max={0.3}
+                    step={0.02}
+                    onValueChange={([v]) => onSettingsChange({ animationSpeed: v })}
                     className="[&_[role=slider]]:bg-white"
                   />
                 </div>
@@ -198,34 +236,14 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs">
                     <Label className="text-white/80">Film Grain</Label>
-                    <span className="text-white/50 font-mono">
-                      {settings.grainIntensity.toFixed(3)}
-                    </span>
+                    <span className="text-white/50 font-mono">{settings.grainIntensity.toFixed(3)}</span>
                   </div>
                   <Slider
                     value={[settings.grainIntensity]}
                     min={0}
-                    max={0.15}
+                    max={0.12}
                     step={0.005}
                     onValueChange={([v]) => onSettingsChange({ grainIntensity: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
-
-                {/* Animation Speed */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Animation Speed</Label>
-                    <span className="text-white/50 font-mono">
-                      {(24 / settings.animationDuration).toFixed(1)}x
-                    </span>
-                  </div>
-                  <Slider
-                    value={[settings.animationDuration]}
-                    min={4}
-                    max={48}
-                    step={2}
-                    onValueChange={([v]) => onSettingsChange({ animationDuration: v })}
                     className="[&_[role=slider]]:bg-white"
                   />
                 </div>
@@ -234,50 +252,48 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
               {/* Color Section */}
               <div className="space-y-3 pt-2 border-t border-white/10">
                 <h4 className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                  Gradient Colors
+                  Color Ramp (Dark → Bright)
                 </h4>
 
-                {/* Color Inputs */}
                 <div className="grid grid-cols-4 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-xs text-white/60">1</Label>
+                    <Label className="text-xs text-white/60">Dark</Label>
                     <input
                       type="color"
-                      value={settings.gradientStart}
-                      onChange={(e) => onSettingsChange({ gradientStart: e.target.value })}
+                      value={settings.colorDark}
+                      onChange={(e) => onSettingsChange({ colorDark: e.target.value })}
                       className="w-full h-8 rounded cursor-pointer border border-white/20"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-white/60">2</Label>
+                    <Label className="text-xs text-white/60">Mid</Label>
                     <input
                       type="color"
-                      value={settings.gradientMiddle}
-                      onChange={(e) => onSettingsChange({ gradientMiddle: e.target.value })}
+                      value={settings.colorMid}
+                      onChange={(e) => onSettingsChange({ colorMid: e.target.value })}
                       className="w-full h-8 rounded cursor-pointer border border-white/20"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-white/60">3</Label>
+                    <Label className="text-xs text-white/60">Bright</Label>
                     <input
                       type="color"
-                      value={settings.gradientEnd}
-                      onChange={(e) => onSettingsChange({ gradientEnd: e.target.value })}
+                      value={settings.colorBright}
+                      onChange={(e) => onSettingsChange({ colorBright: e.target.value })}
                       className="w-full h-8 rounded cursor-pointer border border-white/20"
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-white/60">4</Label>
+                    <Label className="text-xs text-white/60">Accent</Label>
                     <input
                       type="color"
-                      value={settings.gradientAccent}
-                      onChange={(e) => onSettingsChange({ gradientAccent: e.target.value })}
+                      value={settings.colorAccent}
+                      onChange={(e) => onSettingsChange({ colorAccent: e.target.value })}
                       className="w-full h-8 rounded cursor-pointer border border-white/20"
                     />
                   </div>
                 </div>
 
-                {/* Presets */}
                 <div className="space-y-2">
                   <Label className="text-xs text-white/60">Presets</Label>
                   <div className="grid grid-cols-2 gap-2">
@@ -292,7 +308,7 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
                         <div
                           className="w-3 h-3 rounded-full mr-2 shrink-0"
                           style={{
-                            background: `linear-gradient(135deg, ${preset.gradientStart}, ${preset.gradientMiddle}, ${preset.gradientEnd})`,
+                            background: `linear-gradient(90deg, ${preset.colorDark}, ${preset.colorMid}, ${preset.colorBright}, ${preset.colorAccent})`,
                           }}
                         />
                         {preset.name}
