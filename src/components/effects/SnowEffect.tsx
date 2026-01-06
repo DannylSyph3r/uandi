@@ -11,7 +11,7 @@ interface Particle {
   opacity: number;
   wobbleSpeed: number;
   wobbleOffset: number;
-  depth: number; // 0-1, affects speed and opacity (closer = larger values)
+  depth: number;
 }
 
 interface SnowEffectProps {
@@ -59,7 +59,6 @@ export function SnowEffect({
       for (let i = 0; i < particleCount; i++) {
         const depth = Math.random();
         const sizeRange = maxSize - minSize;
-        // Deeper particles (further away) are smaller, closer ones are larger
         const size = minSize + sizeRange * depth * 0.7 + sizeRange * 0.3 * Math.random();
         
         particlesRef.current.push({
@@ -68,7 +67,7 @@ export function SnowEffect({
           vx: (Math.random() - 0.5) * 0.5,
           vy: (0.3 + depth * 0.7) * speed + Math.random() * 0.3,
           size,
-          opacity: 0.2 + depth * 0.6, // Further = more transparent
+          opacity: 0.2 + depth * 0.6,
           wobbleSpeed: 0.02 + Math.random() * 0.03,
           wobbleOffset: Math.random() * Math.PI * 2,
           depth,
@@ -88,17 +87,13 @@ export function SnowEffect({
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       timeRef.current += 1;
 
-      // Smooth wind variation using sine waves
       windRef.current = Math.sin(timeRef.current * 0.005) * windStrength + 
                         Math.sin(timeRef.current * 0.002) * windStrength * 0.5;
 
       const mouse = mouseRef.current;
-
-      // Sort by depth so further particles render behind (optional visual improvement)
       const sortedParticles = [...particlesRef.current].sort((a, b) => a.depth - b.depth);
 
       sortedParticles.forEach((p) => {
-        // Mouse avoidance with depth-based influence
         const dx = p.x - mouse.x;
         const dy = p.y - mouse.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -111,24 +106,16 @@ export function SnowEffect({
           p.vy += Math.sin(angle) * force * avoidStrength * 0.5;
         }
 
-        // Wobble motion (gentle side-to-side sway)
         const wobble = Math.sin(timeRef.current * p.wobbleSpeed + p.wobbleOffset) * 0.3;
-        
-        // Apply wind with depth influence (closer particles affected more)
         const windEffect = windRef.current * (0.3 + p.depth * 0.7);
 
-        // Apply velocity
         p.x += p.vx + wobble + windEffect;
         p.y += p.vy;
-
-        // Dampen horizontal velocity
         p.vx *= 0.96;
 
-        // Reset vertical velocity towards base speed (depth-adjusted)
         const baseSpeed = (0.3 + p.depth * 0.7) * speed;
         p.vy += (baseSpeed - p.vy) * 0.02;
 
-        // Wrap around edges
         if (p.y > canvas.height + 10) {
           p.y = -10;
           p.x = Math.random() * canvas.width;
@@ -136,11 +123,9 @@ export function SnowEffect({
         if (p.x < -20) p.x = canvas.width + 20;
         if (p.x > canvas.width + 20) p.x = -20;
 
-        // Draw particle with soft glow for larger (closer) particles
         ctx.beginPath();
         
         if (p.size > 2.5) {
-          // Add subtle glow for larger snowflakes
           const gradient = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * 2);
           gradient.addColorStop(0, `rgba(${color}, ${p.opacity})`);
           gradient.addColorStop(0.4, `rgba(${color}, ${p.opacity * 0.5})`);
