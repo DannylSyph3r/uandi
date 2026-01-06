@@ -103,9 +103,8 @@ export default function HomePage() {
             <span className="text-white">Lab</span>
           </h1>
           
-          <p className="text-base text-white/40 max-w-md leading-relaxed">
-            A curated collection of experimental interfaces 
-            and visual effects.
+          <p className="text-sm sm:text-base text-white/40 leading-relaxed">
+            A curated collection of experimental interfaces and visual effects.
           </p>
         </header>
 
