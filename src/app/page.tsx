@@ -11,7 +11,9 @@ const defaultSettings: GlassSettings = {
   ridgeWaviness: 0.5,
   animationSpeed: 0.1,
   grainIntensity: 0.04,
-  contrastBoost: 1.2,
+  contrastBoost: 0.9,
+  waveComplexity: 1.0,
+  flowIntensity: 1.0,
   colorDark: "#0a0515",
   colorMid: "#581c87",
   colorBright: "#ec4899",
@@ -35,6 +37,8 @@ export default function FractalGlassPage() {
         animationSpeed={settings.animationSpeed}
         grainIntensity={settings.grainIntensity}
         contrastBoost={settings.contrastBoost}
+        waveComplexity={settings.waveComplexity}
+        flowIntensity={settings.flowIntensity}
         gradientColors={[
           settings.colorDark,
           settings.colorMid,

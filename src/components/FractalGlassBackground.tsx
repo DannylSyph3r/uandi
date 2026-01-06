@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 export interface FractalGlassProps {
-  /** Scale of the gradient flow (lower = larger waves) */
+  /** Scale of the wave patterns */
   noiseScale?: number;
   /** How much vertical displacement the ridges create */
   displacementStrength?: number;
@@ -15,10 +15,14 @@ export interface FractalGlassProps {
   animationSpeed?: number;
   /** Film grain intensity */
   grainIntensity?: number;
-  /** Contrast boost for deep darks */
+  /** Contrast - controls dark valley depth */
   contrastBoost?: number;
   /** Gradient colors array (dark to bright) */
   gradientColors?: string[];
+  /** Wave complexity (more = more bands) */
+  waveComplexity?: number;
+  /** Flow variation intensity */
+  flowIntensity?: number;
 }
 
 // Vertex shader
@@ -33,7 +37,7 @@ const vertexShaderSource = `
   }
 `;
 
-// Fragment shader - CORRECTED: Ridge displacement applied BEFORE color sampling
+// Fragment shader - FLOWING WAVES like aurora/silk
 const fragmentShaderSource = `
   precision highp float;
   
@@ -47,14 +51,14 @@ const fragmentShaderSource = `
   uniform float u_animationSpeed;
   uniform float u_grainIntensity;
   uniform float u_contrastBoost;
+  uniform float u_waveComplexity;
+  uniform float u_flowIntensity;
   uniform vec3 u_colorDark;
   uniform vec3 u_colorMid;
   uniform vec3 u_colorBright;
   uniform vec3 u_colorAccent;
   
-  //
-  // GLSL Simplex Noise by Ian McEwan, Ashima Arts
-  //
+  // Simplex noise
   vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
   vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
   vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
@@ -82,57 +86,130 @@ const fragmentShaderSource = `
     return 130.0 * dot(m, g);
   }
   
+  // FBM - layered noise for organic flow (reduced iterations for performance)
+  float fbm(vec2 p, float t) {
+    float value = 0.0;
+    float amplitude = 0.5;
+    float frequency = 1.0;
+    
+    for (int i = 0; i < 3; i++) {
+      value += amplitude * snoise(p * frequency + t);
+      amplitude *= 0.5;
+      frequency *= 2.0;
+    }
+    return value;
+  }
+  
   // ============================================
-  // STEP 1: Smooth flowing gradient field
-  // This is what gets viewed THROUGH the glass
+  // FLOWING WAVE FIELD - DYNAMIC MULTI-DIRECTIONAL
+  // Creates swirling, multi-directional aurora flow
+  // with opposing currents and organic turbulence
   // ============================================
   float getGradientField(vec2 uv, float time) {
     float t = time * u_animationSpeed;
     
-    // Create flowing aurora-like bands using diagonal movement
-    // Much larger scale, smoother than the blobby noise
-    float flow = snoise(vec2(uv.x * 0.8, uv.y * 2.5) * u_noiseScale + vec2(t * 0.15, t * 0.3));
+    // Scale UV
+    vec2 p = uv * u_noiseScale;
     
-    // Add secondary wave for organic feel - travels diagonally
-    flow += 0.6 * snoise(vec2(uv.x * 1.2, uv.y * 1.8) * u_noiseScale + vec2(-t * 0.2, t * 0.15));
+    // ========== SWIRL / VORTEX EFFECT ==========
+    // Create rotational motion that varies across the canvas
+    vec2 center = vec2(0.5, 0.5);
+    vec2 toCenter = uv - center;
+    float dist = length(toCenter);
+    float angle = atan(toCenter.y, toCenter.x);
     
-    // Third layer for subtle variation
-    flow += 0.3 * snoise(vec2(uv.x * 2.0, uv.y * 0.8) * u_noiseScale + vec2(t * 0.1, -t * 0.2));
+    // Time-varying swirl intensity
+    float swirlSpeed = sin(t * 0.15) * 0.5 + 0.5;
+    float swirlAngle = angle + dist * 2.0 * swirlSpeed * sin(t * 0.2);
+    vec2 swirlOffset = vec2(cos(swirlAngle), sin(swirlAngle)) * dist * 0.3 * u_flowIntensity;
     
-    // Normalize to 0-1
-    flow = flow * 0.35 + 0.5;
+    // ========== DYNAMIC DOMAIN WARPING ==========
+    // Multi-directional warp that changes over time
+    float warpAngle = t * 0.1;
+    vec2 warpDir1 = vec2(cos(warpAngle), sin(warpAngle));
+    vec2 warpDir2 = vec2(cos(warpAngle + 2.094), sin(warpAngle + 2.094));
     
-    // S-curve for smooth transitions between light and dark
-    flow = smoothstep(0.0, 1.0, flow);
+    vec2 warp = vec2(
+      fbm(p * 0.8 + warpDir1 * t * 0.2, t * 0.2),
+      fbm(p * 0.8 + warpDir2 * t * 0.15, t * 0.15)
+    );
     
-    // Apply contrast
-    flow = pow(flow, u_contrastBoost);
+    p += warp * u_flowIntensity * 0.35;
+    p += swirlOffset * 0.2;
     
-    return clamp(flow, 0.0, 1.0);
+    // ========== PULSATING SPEED MODULATION ==========
+    float speedPulse1 = sin(t * 0.08) * 0.4 + 1.0;
+    float speedPulse2 = sin(t * 0.12 + 1.5) * 0.3 + 1.0;
+    
+    // ========== MULTI-DIRECTIONAL WAVE BANDS ==========
+    float waves = 0.0;
+    
+    // Wave 1 - Primary flow (rotating direction over time)
+    float angle1 = 0.7 + sin(t * 0.05) * 0.3;
+    vec2 dir1 = vec2(cos(angle1), sin(angle1));
+    float wave1 = sin(dot(p, dir1) * 3.0 * u_waveComplexity + t * 1.2 * speedPulse1 + fbm(p * 2.0, t) * 2.0);
+    waves += wave1 * 0.35;
+    
+    // Wave 2 - Counter-rotating flow
+    float angle2 = 2.4 - sin(t * 0.07) * 0.4;
+    vec2 dir2 = vec2(cos(angle2), sin(angle2));
+    float wave2 = sin(dot(p, dir2) * 2.5 * u_waveComplexity - t * 1.0 * speedPulse2 + fbm(p * 1.5 + 10.0, t) * 1.5);
+    waves += wave2 * 0.3;
+    
+    // Wave 3 - Vertical oscillation
+    float verticalShift = sin(t * 0.09) * 0.5;
+    float wave3 = sin((p.y + p.x * 0.3 * verticalShift) * 2.8 * u_waveComplexity + t * 0.8);
+    waves += wave3 * 0.2;
+    
+    // Wave 4 - Radial wave from shifting center
+    vec2 waveCenter = vec2(0.5 + sin(t * 0.1) * 0.3, 0.5 + cos(t * 0.08) * 0.3);
+    float radialDist = length(p / u_noiseScale - waveCenter);
+    float wave4 = sin(radialDist * 4.0 * u_waveComplexity - t * 0.5);
+    waves += wave4 * 0.15;
+    
+    // ========== COMBINE AND NORMALIZE ==========
+    float field = waves * 0.45 + 0.5;
+    
+    // ========== ORGANIC TURBULENCE ==========
+    float variation = fbm(p * 3.0 + vec2(t * 0.15, -t * 0.12), t * 0.3) * 0.1;
+    field += variation;
+    
+    // ========== DYNAMIC BREATHING ==========
+    float pulse = sin(t * 0.18) * 0.04 + sin(t * 0.07) * 0.03;
+    field += pulse;
+    
+    // ========== LOCAL INTENSITY VARIATION ==========
+    float localVar = snoise(uv * 2.0 + vec2(sin(t * 0.1), cos(t * 0.12)) * 0.5);
+    field += localVar * 0.06;
+    
+    // ========== BIAS TOWARD COLOR ==========
+    field = field * 0.7 + 0.3;
+    
+    // Clamp and apply contrast
+    field = clamp(field, 0.0, 1.0);
+    
+    // S-curve for smoother transitions
+    field = smoothstep(0.0, 1.0, field);
+    
+    // Contrast adjustment
+    field = pow(field, u_contrastBoost);
+    
+    return field;
   }
   
   // ============================================
-  // STEP 2: Vertical ridge pattern
-  // Returns displacement amount for Y coordinate
+  // Vertical ridge pattern
   // ============================================
   float getRidgeDisplacement(vec2 uv, float time) {
     float t = time * u_animationSpeed * 0.5;
     
-    // Base x position for the ridge
     float ridgeX = uv.x * u_lineFrequency;
-    
-    // Add waviness - ridges undulate slightly
     float wave = snoise(vec2(uv.x * 3.0, uv.y * 8.0 + t)) * u_ridgeWaviness * 0.3;
     ridgeX += wave;
     
-    // Create the ridge pattern using sine
     float ridge = sin(ridgeX * 6.28318);
-    
-    // Shape the ridge - peaks and valleys
-    // This creates the actual displacement amount
     float displacement = ridge;
     
-    // Add variation along Y - ridges aren't perfectly uniform
     float yVariation = snoise(vec2(uv.x * 5.0, uv.y * 2.0 + t * 0.3)) * 0.3;
     displacement *= (1.0 + yVariation);
     
@@ -140,7 +217,7 @@ const fragmentShaderSource = `
   }
   
   // ============================================
-  // STEP 3: Color ramp
+  // Color ramp
   // ============================================
   vec3 colorRamp(float n) {
     vec3 color;
@@ -166,37 +243,28 @@ const fragmentShaderSource = `
     float time = u_time;
     float aspect = u_resolution.x / u_resolution.y;
     
-    // ============================================
-    // THE KEY FIX: Displace UV BEFORE color sampling
-    // ============================================
-    
-    // Get the ridge displacement for this position
+    // Get ridge displacement
     float ridgeOffset = getRidgeDisplacement(uv, time);
     
-    // DISPLACE THE Y COORDINATE based on ridge pattern
-    // This creates the vertical "stretching through glass" effect
+    // Displace UV for glass effect
     vec2 displacedUV = uv;
     displacedUV.y += ridgeOffset * u_displacementStrength;
     
-    // Aspect-correct for gradient field sampling
+    // Aspect-correct for gradient field
     vec2 gradientUV = vec2(displacedUV.x * aspect, displacedUV.y);
     
-    // Sample the gradient field at the DISPLACED position
+    // Sample the flowing wave field
     float gradientValue = getGradientField(gradientUV, time);
     
-    // Get color from the gradient
+    // Get color
     vec3 color = colorRamp(gradientValue);
     
-    // ============================================
-    // Add subtle ridge shading for depth
-    // ============================================
-    
-    // Ridge peaks are slightly brighter, valleys slightly darker
-    float ridgeShading = ridgeOffset * 0.5 + 0.5; // 0-1 range
+    // Ridge shading for depth
+    float ridgeShading = ridgeOffset * 0.5 + 0.5;
     float shadeFactor = mix(0.85, 1.1, ridgeShading);
     color *= shadeFactor;
     
-    // Add subtle specular on ridge peaks
+    // Specular on ridge peaks
     float specular = pow(max(ridgeShading, 0.0), 4.0) * 0.08;
     color += vec3(specular);
     
@@ -204,7 +272,6 @@ const fragmentShaderSource = `
     float grain = (random(uv * u_resolution, time * 10.0) - 0.5) * u_grainIntensity;
     color += vec3(grain);
     
-    // Clamp output
     color = clamp(color, 0.0, 1.0);
     
     gl_FragColor = vec4(color, 1.0);
@@ -264,6 +331,24 @@ function createProgram(
   return program;
 }
 
+interface UniformLocations {
+  time: WebGLUniformLocation | null;
+  resolution: WebGLUniformLocation | null;
+  noiseScale: WebGLUniformLocation | null;
+  displacementStrength: WebGLUniformLocation | null;
+  lineFrequency: WebGLUniformLocation | null;
+  ridgeWaviness: WebGLUniformLocation | null;
+  animationSpeed: WebGLUniformLocation | null;
+  grainIntensity: WebGLUniformLocation | null;
+  contrastBoost: WebGLUniformLocation | null;
+  waveComplexity: WebGLUniformLocation | null;
+  flowIntensity: WebGLUniformLocation | null;
+  colorDark: WebGLUniformLocation | null;
+  colorMid: WebGLUniformLocation | null;
+  colorBright: WebGLUniformLocation | null;
+  colorAccent: WebGLUniformLocation | null;
+}
+
 export function FractalGlassBackground({
   noiseScale = 1.0,
   displacementStrength = 0.15,
@@ -271,28 +356,32 @@ export function FractalGlassBackground({
   ridgeWaviness = 0.5,
   animationSpeed = 0.1,
   grainIntensity = 0.04,
-  contrastBoost = 1.2,
+  contrastBoost = 0.9,
   gradientColors = ["#0a0515", "#581c87", "#ec4899", "#06b6d4"],
+  waveComplexity = 1.0,
+  flowIntensity = 1.0,
 }: FractalGlassProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>(0);
+  const glRef = useRef<WebGLRenderingContext | null>(null);
+  const uniformsRef = useRef<UniformLocations | null>(null);
+  const isInitializedRef = useRef(false);
 
+  // Initialize WebGL once
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || isInitializedRef.current) return;
 
-    const gl = canvas.getContext("webgl", { antialias: true });
+    const gl = canvas.getContext("webgl", { antialias: false, alpha: false });
     if (!gl) {
       console.error("WebGL not supported");
       return;
     }
 
+    glRef.current = gl;
+
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-    const fragmentShader = createShader(
-      gl,
-      gl.FRAGMENT_SHADER,
-      fragmentShaderSource
-    );
+    const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
 
     if (!vertexShader || !fragmentShader) return;
 
@@ -301,7 +390,7 @@ export function FractalGlassBackground({
 
     gl.useProgram(program);
 
-    // Set up geometry
+    // Set up geometry (only once)
     const positions = new Float32Array([
       -1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1,
     ]);
@@ -323,8 +412,8 @@ export function FractalGlassBackground({
     gl.enableVertexAttribArray(texCoordLocation);
     gl.vertexAttribPointer(texCoordLocation, 2, gl.FLOAT, false, 0, 0);
 
-    // Get uniform locations
-    const uniforms = {
+    // Store uniform locations
+    uniformsRef.current = {
       time: gl.getUniformLocation(program, "u_time"),
       resolution: gl.getUniformLocation(program, "u_resolution"),
       noiseScale: gl.getUniformLocation(program, "u_noiseScale"),
@@ -334,40 +423,23 @@ export function FractalGlassBackground({
       animationSpeed: gl.getUniformLocation(program, "u_animationSpeed"),
       grainIntensity: gl.getUniformLocation(program, "u_grainIntensity"),
       contrastBoost: gl.getUniformLocation(program, "u_contrastBoost"),
+      waveComplexity: gl.getUniformLocation(program, "u_waveComplexity"),
+      flowIntensity: gl.getUniformLocation(program, "u_flowIntensity"),
       colorDark: gl.getUniformLocation(program, "u_colorDark"),
       colorMid: gl.getUniformLocation(program, "u_colorMid"),
       colorBright: gl.getUniformLocation(program, "u_colorBright"),
       colorAccent: gl.getUniformLocation(program, "u_colorAccent"),
     };
 
-    // Parse colors
-    const colorDark = hexToRgb(gradientColors[0] || "#0a0515");
-    const colorMid = hexToRgb(gradientColors[1] || "#581c87");
-    const colorBright = hexToRgb(gradientColors[2] || "#ec4899");
-    const colorAccent = hexToRgb(gradientColors[3] || "#06b6d4");
-
-    // Set static uniforms
-    gl.uniform1f(uniforms.noiseScale, noiseScale);
-    gl.uniform1f(uniforms.displacementStrength, displacementStrength);
-    gl.uniform1f(uniforms.lineFrequency, lineFrequency);
-    gl.uniform1f(uniforms.ridgeWaviness, ridgeWaviness);
-    gl.uniform1f(uniforms.animationSpeed, animationSpeed);
-    gl.uniform1f(uniforms.grainIntensity, grainIntensity);
-    gl.uniform1f(uniforms.contrastBoost, contrastBoost);
-    gl.uniform3fv(uniforms.colorDark, colorDark);
-    gl.uniform3fv(uniforms.colorMid, colorMid);
-    gl.uniform3fv(uniforms.colorBright, colorBright);
-    gl.uniform3fv(uniforms.colorAccent, colorAccent);
-
     // Handle resize
     const handleResize = () => {
-      const dpr = Math.min(window.devicePixelRatio, 2);
+      const dpr = Math.min(window.devicePixelRatio, 1.5); // Limit DPR for performance
       canvas.width = window.innerWidth * dpr;
       canvas.height = window.innerHeight * dpr;
       canvas.style.width = `${window.innerWidth}px`;
       canvas.style.height = `${window.innerHeight}px`;
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+      gl.uniform2f(uniformsRef.current!.resolution, canvas.width, canvas.height);
     };
 
     handleResize();
@@ -376,12 +448,14 @@ export function FractalGlassBackground({
     // Animation loop
     const startTime = performance.now();
     const render = () => {
+      if (!glRef.current || !uniformsRef.current) return;
       const elapsed = (performance.now() - startTime) / 1000;
-      gl.uniform1f(uniforms.time, elapsed);
-      gl.drawArrays(gl.TRIANGLES, 0, 6);
+      glRef.current.uniform1f(uniformsRef.current.time, elapsed);
+      glRef.current.drawArrays(glRef.current.TRIANGLES, 0, 6);
       animationRef.current = requestAnimationFrame(render);
     };
 
+    isInitializedRef.current = true;
     render();
 
     return () => {
@@ -390,7 +464,37 @@ export function FractalGlassBackground({
       gl.deleteProgram(program);
       gl.deleteShader(vertexShader);
       gl.deleteShader(fragmentShader);
+      isInitializedRef.current = false;
+      glRef.current = null;
+      uniformsRef.current = null;
     };
+  }, []); // Empty deps - initialize only once
+
+  // Update uniforms when props change (no WebGL recreation!)
+  useEffect(() => {
+    const gl = glRef.current;
+    const uniforms = uniformsRef.current;
+    if (!gl || !uniforms) return;
+
+    gl.uniform1f(uniforms.noiseScale, noiseScale);
+    gl.uniform1f(uniforms.displacementStrength, displacementStrength);
+    gl.uniform1f(uniforms.lineFrequency, lineFrequency);
+    gl.uniform1f(uniforms.ridgeWaviness, ridgeWaviness);
+    gl.uniform1f(uniforms.animationSpeed, animationSpeed);
+    gl.uniform1f(uniforms.grainIntensity, grainIntensity);
+    gl.uniform1f(uniforms.contrastBoost, contrastBoost);
+    gl.uniform1f(uniforms.waveComplexity, waveComplexity);
+    gl.uniform1f(uniforms.flowIntensity, flowIntensity);
+
+    const colorDark = hexToRgb(gradientColors[0] || "#0a0515");
+    const colorMid = hexToRgb(gradientColors[1] || "#581c87");
+    const colorBright = hexToRgb(gradientColors[2] || "#ec4899");
+    const colorAccent = hexToRgb(gradientColors[3] || "#06b6d4");
+
+    gl.uniform3fv(uniforms.colorDark, colorDark);
+    gl.uniform3fv(uniforms.colorMid, colorMid);
+    gl.uniform3fv(uniforms.colorBright, colorBright);
+    gl.uniform3fv(uniforms.colorAccent, colorAccent);
   }, [
     noiseScale,
     displacementStrength,
@@ -400,6 +504,8 @@ export function FractalGlassBackground({
     grainIntensity,
     contrastBoost,
     gradientColors,
+    waveComplexity,
+    flowIntensity,
   ]);
 
   return (

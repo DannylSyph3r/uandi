@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, X, ChevronDown, ChevronUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
+import { Settings, X, SlidersHorizontal } from "lucide-react";
 
 export interface GlassSettings {
   noiseScale: number;
@@ -15,6 +11,8 @@ export interface GlassSettings {
   animationSpeed: number;
   grainIntensity: number;
   contrastBoost: number;
+  waveComplexity: number;
+  flowIntensity: number;
   colorDark: string;
   colorMid: string;
   colorBright: string;
@@ -31,28 +29,28 @@ interface ColorPreset {
 
 const colorPresets: ColorPreset[] = [
   {
-    name: "Pink Neon",
+    name: "Neon",
     colorDark: "#0a0515",
     colorMid: "#581c87",
     colorBright: "#ec4899",
     colorAccent: "#06b6d4",
   },
   {
-    name: "Orange Flame",
+    name: "Flame",
     colorDark: "#0c0a09",
     colorMid: "#7c2d12",
     colorBright: "#f97316",
     colorAccent: "#fbbf24",
   },
   {
-    name: "Blue Ocean",
+    name: "Ocean",
     colorDark: "#020617",
     colorMid: "#1e3a8a",
     colorBright: "#3b82f6",
     colorAccent: "#67e8f9",
   },
   {
-    name: "Gold Lux",
+    name: "Gold",
     colorDark: "#0f0c06",
     colorMid: "#78350f",
     colorBright: "#f59e0b",
@@ -66,7 +64,7 @@ const colorPresets: ColorPreset[] = [
     colorAccent: "#a78bfa",
   },
   {
-    name: "Magenta",
+    name: "Violet",
     colorDark: "#1a0a1a",
     colorMid: "#86198f",
     colorBright: "#d946ef",
@@ -79,9 +77,98 @@ interface SettingsPanelProps {
   onSettingsChange: (settings: Partial<GlassSettings>) => void;
 }
 
+// Custom minimal slider component
+function MinimalSlider({
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  accent = "white",
+}: {
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+  accent?: string;
+}) {
+  const percentage = ((value - min) / (max - min)) * 100;
+
+  return (
+    <div className="relative h-6 flex items-center group">
+      <div className="absolute inset-x-0 h-[3px] rounded-full bg-white/[0.08]">
+        <div
+          className="absolute h-full rounded-full transition-all duration-100"
+          style={{
+            width: `${percentage}%`,
+            background: accent === "white" 
+              ? "linear-gradient(90deg, rgba(255,255,255,0.3), rgba(255,255,255,0.6))"
+              : `linear-gradient(90deg, ${accent}66, ${accent})`,
+          }}
+        />
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+        className="absolute inset-0 w-full opacity-0 cursor-pointer"
+      />
+      <div
+        className="absolute w-3 h-3 rounded-full bg-white shadow-lg shadow-black/30 transition-all duration-100
+                   ring-2 ring-white/20 group-hover:ring-white/40 group-hover:scale-110"
+        style={{ left: `calc(${percentage}% - 6px)` }}
+      />
+    </div>
+  );
+}
+
+// Minimal control row
+function ControlRow({
+  label,
+  value,
+  min,
+  max,
+  step,
+  onChange,
+  formatValue,
+  accent,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (value: number) => void;
+  formatValue?: (v: number) => string;
+  accent?: string;
+}) {
+  const displayValue = formatValue ? formatValue(value) : value.toFixed(2);
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between items-center">
+        <span className="text-[11px] text-white/50 font-medium tracking-wide">{label}</span>
+        <span className="text-[10px] text-white/30 font-mono tabular-nums">{displayValue}</span>
+      </div>
+      <MinimalSlider
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        onChange={onChange}
+        accent={accent}
+      />
+    </div>
+  );
+}
+
 export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [activeSection, setActiveSection] = useState<"flow" | "glass" | "color">("flow");
 
   const handlePresetClick = (preset: ColorPreset) => {
     onSettingsChange({
@@ -93,233 +180,223 @@ export function SettingsPanel({ settings, onSettingsChange }: SettingsPanelProps
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-6 right-6 z-50">
+      {/* Floating trigger button */}
       {!isOpen && (
-        <Button
+        <button
           onClick={() => setIsOpen(true)}
-          size="icon"
-          className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 shadow-2xl"
+          className="group relative h-12 w-12 rounded-2xl 
+                     bg-white/10 backdrop-blur-xl border border-white/20
+                     hover:bg-white/15 hover:border-white/30
+                     transition-all duration-300 ease-out
+                     shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_20px_rgba(255,255,255,0.05)]
+                     hover:shadow-[0_8px_32px_rgba(0,0,0,0.4),0_0_30px_rgba(255,255,255,0.1)]"
         >
-          <Settings className="h-5 w-5 text-white" />
-        </Button>
+          <Settings className="h-5 w-5 text-white/80 mx-auto group-hover:text-white 
+                               transition-all duration-300 group-hover:rotate-45" />
+        </button>
       )}
 
+      {/* Settings panel */}
       {isOpen && (
-        <Card className="w-80 bg-black/80 backdrop-blur-xl border-white/10 text-white shadow-2xl max-h-[85vh] overflow-y-auto">
-          <CardHeader className="pb-2 flex flex-row items-center justify-between sticky top-0 bg-black/80 backdrop-blur-xl z-10">
-            <CardTitle className="text-sm font-medium">Fractal Glass</CardTitle>
-            <div className="flex gap-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 hover:bg-white/10"
-                onClick={() => setIsCollapsed(!isCollapsed)}
-              >
-                {isCollapsed ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 hover:bg-white/10"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+        <div className="w-72 rounded-2xl overflow-hidden
+                        bg-black/40 backdrop-blur-2xl 
+                        border border-white/[0.06]
+                        shadow-[0_24px_80px_rgba(0,0,0,0.5)]
+                        animate-in fade-in slide-in-from-bottom-4 duration-300">
+          
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.04]">
+            <div className="flex items-center gap-2">
+              <SlidersHorizontal className="h-3.5 w-3.5 text-white/40" />
+              <span className="text-xs font-medium text-white/70 tracking-wide">Settings</span>
             </div>
-          </CardHeader>
+            <button
+              onClick={() => setIsOpen(false)}
+              className="h-6 w-6 rounded-lg flex items-center justify-center
+                         hover:bg-white/[0.06] transition-colors duration-200"
+            >
+              <X className="h-3.5 w-3.5 text-white/40" />
+            </button>
+          </div>
 
-          {!isCollapsed && (
-            <CardContent className="space-y-4 pt-0">
-              {/* Glass Effect Parameters */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                  Glass Effect
-                </h4>
+          {/* Tab navigation */}
+          <div className="flex gap-1 p-2 border-b border-white/[0.04]">
+            {(["flow", "glass", "color"] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveSection(tab)}
+                className={`flex-1 px-3 py-1.5 text-[10px] font-medium uppercase tracking-widest rounded-lg
+                           transition-all duration-200 ${
+                             activeSection === tab
+                               ? "bg-white/[0.08] text-white/80"
+                               : "text-white/30 hover:text-white/50 hover:bg-white/[0.03]"
+                           }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
 
-                {/* Noise Scale */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Gradient Scale</Label>
-                    <span className="text-white/50 font-mono">{settings.noiseScale.toFixed(2)}</span>
-                  </div>
-                  <Slider
-                    value={[settings.noiseScale]}
-                    min={0.3}
-                    max={3.0}
-                    step={0.1}
-                    onValueChange={([v]) => onSettingsChange({ noiseScale: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
-
-                {/* Displacement Strength */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Ridge Depth</Label>
-                    <span className="text-white/50 font-mono">{settings.displacementStrength.toFixed(2)}</span>
-                  </div>
-                  <Slider
-                    value={[settings.displacementStrength]}
-                    min={0.02}
-                    max={0.4}
-                    step={0.01}
-                    onValueChange={([v]) => onSettingsChange({ displacementStrength: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
-
-                {/* Line Frequency */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Ridge Count</Label>
-                    <span className="text-white/50 font-mono">{settings.lineFrequency.toFixed(0)}</span>
-                  </div>
-                  <Slider
-                    value={[settings.lineFrequency]}
-                    min={20}
-                    max={200}
-                    step={5}
-                    onValueChange={([v]) => onSettingsChange({ lineFrequency: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
-
-                {/* Ridge Waviness */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Ridge Waviness</Label>
-                    <span className="text-white/50 font-mono">{settings.ridgeWaviness.toFixed(2)}</span>
-                  </div>
-                  <Slider
-                    value={[settings.ridgeWaviness]}
-                    min={0}
-                    max={1.5}
-                    step={0.05}
-                    onValueChange={([v]) => onSettingsChange({ ridgeWaviness: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
-
-                {/* Contrast Boost */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Contrast</Label>
-                    <span className="text-white/50 font-mono">{settings.contrastBoost.toFixed(2)}</span>
-                  </div>
-                  <Slider
-                    value={[settings.contrastBoost]}
-                    min={0.8}
-                    max={2.5}
-                    step={0.1}
-                    onValueChange={([v]) => onSettingsChange({ contrastBoost: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
-
-                {/* Animation Speed */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Flow Speed</Label>
-                    <span className="text-white/50 font-mono">{settings.animationSpeed.toFixed(2)}</span>
-                  </div>
-                  <Slider
-                    value={[settings.animationSpeed]}
-                    min={0.02}
-                    max={0.3}
-                    step={0.02}
-                    onValueChange={([v]) => onSettingsChange({ animationSpeed: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
-
-                {/* Grain Intensity */}
-                <div className="space-y-1.5">
-                  <div className="flex justify-between text-xs">
-                    <Label className="text-white/80">Film Grain</Label>
-                    <span className="text-white/50 font-mono">{settings.grainIntensity.toFixed(3)}</span>
-                  </div>
-                  <Slider
-                    value={[settings.grainIntensity]}
-                    min={0}
-                    max={0.12}
-                    step={0.005}
-                    onValueChange={([v]) => onSettingsChange({ grainIntensity: v })}
-                    className="[&_[role=slider]]:bg-white"
-                  />
-                </div>
+          {/* Content */}
+          <div className="p-4 max-h-[60vh] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+            
+            {/* Flow Section */}
+            {activeSection === "flow" && (
+              <div className="space-y-5">
+                <ControlRow
+                  label="Wave Complexity"
+                  value={settings.waveComplexity}
+                  min={0.3}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) => onSettingsChange({ waveComplexity: v })}
+                />
+                <ControlRow
+                  label="Flow Warp"
+                  value={settings.flowIntensity}
+                  min={0}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) => onSettingsChange({ flowIntensity: v })}
+                />
+                <ControlRow
+                  label="Pattern Scale"
+                  value={settings.noiseScale}
+                  min={0.3}
+                  max={2.0}
+                  step={0.1}
+                  onChange={(v) => onSettingsChange({ noiseScale: v })}
+                />
+                <ControlRow
+                  label="Flow Speed"
+                  value={settings.animationSpeed}
+                  min={0.02}
+                  max={0.3}
+                  step={0.02}
+                  onChange={(v) => onSettingsChange({ animationSpeed: v })}
+                />
+                <ControlRow
+                  label="Dark Valleys"
+                  value={settings.contrastBoost}
+                  min={0.5}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(v) => onSettingsChange({ contrastBoost: v })}
+                />
               </div>
+            )}
 
-              {/* Color Section */}
-              <div className="space-y-3 pt-2 border-t border-white/10">
-                <h4 className="text-xs font-medium text-white/60 uppercase tracking-wider">
-                  Color Ramp (Dark → Bright)
-                </h4>
+            {/* Glass Section */}
+            {activeSection === "glass" && (
+              <div className="space-y-5">
+                <ControlRow
+                  label="Ridge Depth"
+                  value={settings.displacementStrength}
+                  min={0.02}
+                  max={0.4}
+                  step={0.01}
+                  onChange={(v) => onSettingsChange({ displacementStrength: v })}
+                />
+                <ControlRow
+                  label="Ridge Count"
+                  value={settings.lineFrequency}
+                  min={20}
+                  max={200}
+                  step={5}
+                  onChange={(v) => onSettingsChange({ lineFrequency: v })}
+                  formatValue={(v) => v.toFixed(0)}
+                />
+                <ControlRow
+                  label="Ridge Waviness"
+                  value={settings.ridgeWaviness}
+                  min={0}
+                  max={1.5}
+                  step={0.05}
+                  onChange={(v) => onSettingsChange({ ridgeWaviness: v })}
+                />
+                <ControlRow
+                  label="Film Grain"
+                  value={settings.grainIntensity}
+                  min={0}
+                  max={0.12}
+                  step={0.005}
+                  onChange={(v) => onSettingsChange({ grainIntensity: v })}
+                  formatValue={(v) => v.toFixed(3)}
+                />
+              </div>
+            )}
 
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-white/60">Dark</Label>
-                    <input
-                      type="color"
-                      value={settings.colorDark}
-                      onChange={(e) => onSettingsChange({ colorDark: e.target.value })}
-                      className="w-full h-8 rounded cursor-pointer border border-white/20"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-white/60">Mid</Label>
-                    <input
-                      type="color"
-                      value={settings.colorMid}
-                      onChange={(e) => onSettingsChange({ colorMid: e.target.value })}
-                      className="w-full h-8 rounded cursor-pointer border border-white/20"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-white/60">Bright</Label>
-                    <input
-                      type="color"
-                      value={settings.colorBright}
-                      onChange={(e) => onSettingsChange({ colorBright: e.target.value })}
-                      className="w-full h-8 rounded cursor-pointer border border-white/20"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-white/60">Accent</Label>
-                    <input
-                      type="color"
-                      value={settings.colorAccent}
-                      onChange={(e) => onSettingsChange({ colorAccent: e.target.value })}
-                      className="w-full h-8 rounded cursor-pointer border border-white/20"
-                    />
-                  </div>
+            {/* Color Section */}
+            {activeSection === "color" && (
+              <div className="space-y-5">
+                {/* Gradient preview */}
+                <div className="h-8 rounded-xl overflow-hidden ring-1 ring-white/[0.06]"
+                     style={{
+                       background: `linear-gradient(90deg, ${settings.colorDark}, ${settings.colorMid}, ${settings.colorBright}, ${settings.colorAccent})`,
+                     }}
+                />
+
+                {/* Color pickers */}
+                <div className="grid grid-cols-4 gap-3">
+                  {[
+                    { key: "colorDark", label: "Dark", value: settings.colorDark },
+                    { key: "colorMid", label: "Mid", value: settings.colorMid },
+                    { key: "colorBright", label: "Bright", value: settings.colorBright },
+                    { key: "colorAccent", label: "Accent", value: settings.colorAccent },
+                  ].map(({ key, label, value }) => (
+                    <div key={key} className="space-y-1.5">
+                      <span className="text-[9px] text-white/30 uppercase tracking-wider block text-center">
+                        {label}
+                      </span>
+                      <label className="relative block aspect-square rounded-xl cursor-pointer
+                                        ring-1 ring-white/[0.08] hover:ring-white/[0.15]
+                                        transition-all duration-200 hover:scale-105
+                                        overflow-hidden">
+                        <div className="absolute inset-0" style={{ background: value }} />
+                        <input
+                          type="color"
+                          value={value}
+                          onChange={(e) => onSettingsChange({ [key]: e.target.value })}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                      </label>
+                    </div>
+                  ))}
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-xs text-white/60">Presets</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                {/* Presets */}
+                <div className="pt-2">
+                  <span className="text-[9px] text-white/30 uppercase tracking-wider block mb-3">
+                    Presets
+                  </span>
+                  <div className="grid grid-cols-3 gap-2">
                     {colorPresets.map((preset) => (
-                      <Button
+                      <button
                         key={preset.name}
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs border-white/20 bg-white/5 hover:bg-white/10 text-white"
                         onClick={() => handlePresetClick(preset)}
+                        className="group relative h-9 rounded-xl overflow-hidden
+                                   ring-1 ring-white/[0.06] hover:ring-white/[0.15]
+                                   transition-all duration-200 hover:scale-[1.02]"
                       >
                         <div
-                          className="w-3 h-3 rounded-full mr-2 shrink-0"
+                          className="absolute inset-0 opacity-80 group-hover:opacity-100 transition-opacity"
                           style={{
-                            background: `linear-gradient(90deg, ${preset.colorDark}, ${preset.colorMid}, ${preset.colorBright}, ${preset.colorAccent})`,
+                            background: `linear-gradient(135deg, ${preset.colorDark}, ${preset.colorMid}, ${preset.colorBright}, ${preset.colorAccent})`,
                           }}
                         />
-                        {preset.name}
-                      </Button>
+                        <span className="relative text-[9px] font-medium text-white/90 
+                                         drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
+                          {preset.name}
+                        </span>
+                      </button>
                     ))}
                   </div>
                 </div>
               </div>
-            </CardContent>
-          )}
-        </Card>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
